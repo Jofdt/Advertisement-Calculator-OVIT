@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OViT — Break-even ROAS Calculator</title>
+<style>
+  :root{
+    --warm-white:#faf7f2;
+    --card:#ffffff;
+    --olive:#5b6247;
+    --olive-dark:#454b36;
+    --ink:#2b2a26;
+    --muted:#8a8578;
+    --line:#e7e1d6;
+    --good:#4c7a4c;
+    --bad:#a4472f;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
+    background:var(--warm-white);color:var(--ink);
+    padding:32px 16px 64px;line-height:1.5;
+  }
+  .wrap{max-width:760px;margin:0 auto;}
+  h1{font-size:22px;font-weight:600;letter-spacing:.02em;}
+  .sub{color:var(--muted);font-size:14px;margin:6px 0 28px;}
+  .card{
+    background:var(--card);border:1px solid var(--line);border-radius:14px;
+    padding:24px;margin-bottom:20px;
+  }
+  h2{font-size:13px;text-transform:uppercase;letter-spacing:.12em;color:var(--olive);margin-bottom:16px;font-weight:600;}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:14px 18px;}
+  @media(max-width:560px){.grid{grid-template-columns:1fr;}}
+  label{display:block;font-size:13px;font-weight:500;margin-bottom:4px;}
+  .hint{display:block;font-size:11.5px;color:var(--muted);font-weight:400;margin-top:2px;}
+  .field input{
+    width:100%;padding:9px 12px;font-size:15px;border:1px solid var(--line);
+    border-radius:8px;background:var(--warm-white);color:var(--ink);
+  }
+  .field input:focus{outline:none;border-color:var(--olive);}
+  .results{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+  @media(max-width:560px){.results{grid-template-columns:1fr;}}
+  .stat{
+    border:1px solid var(--line);border-radius:10px;padding:14px 16px;background:var(--warm-white);
+  }
+  .stat .k{font-size:12px;color:var(--muted);margin-bottom:2px;}
+  .stat .v{font-size:24px;font-weight:600;letter-spacing:-.01em;}
+  .stat .note{font-size:11.5px;color:var(--muted);margin-top:4px;}
+  .big{grid-column:1/-1;border:1.5px solid var(--olive);background:#f2f2ea;}
+  .big .v{font-size:34px;color:var(--olive-dark);}
+  .verdict{font-size:14px;font-weight:600;margin-top:6px;}
+  .good{color:var(--good);} .bad{color:var(--bad);}
+  .explain{font-size:13px;color:var(--muted);margin-top:14px;border-top:1px solid var(--line);padding-top:12px;}
+  .explain b{color:var(--ink);font-weight:600;}
+  footer{font-size:12px;color:var(--muted);text-align:center;margin-top:8px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>OViT — Break-even ROAS</h1>
+  <p class="sub">Know the real number a "good" ad must beat — before a dollar is spent. Everything updates as you type.</p>
+
+  <div class="card">
+    <h2>1 · Per-order economics</h2>
+    <div class="grid">
+      <div class="field">
+        <label>Average order value (AOV) $<span class="hint">Revenue per order. One bag ≈ its price ($98–$140).</span></label>
+        <input type="number" id="aov" value="110" step="1">
+      </div>
+      <div class="field">
+        <label>COGS per order $<span class="hint">What the bag costs you: manufacturing + materials + freight in.</span></label>
+        <input type="number" id="cogs" value="30" step="1">
+      </div>
+      <div class="field">
+        <label>Shipping per order $<span class="hint">Outbound shipping + packaging you pay.</span></label>
+        <input type="number" id="ship" value="10" step="0.5">
+      </div>
+      <div class="field">
+        <label>Return rate %<span class="hint">% of orders returned/refunded. Bags: 5–10% is typical.</span></label>
+        <input type="number" id="ret" value="7" step="0.5">
+      </div>
+      <div class="field">
+        <label>Payment & platform fees %<span class="hint">Shopify + card processing ≈ 3%.</span></label>
+        <input type="number" id="feepct" value="3" step="0.1">
+      </div>
+      <div class="field">
+        <label>Other fixed cost per order $<span class="hint">Apps, inserts, thank-you cards, misc.</span></label>
+        <input type="number" id="feefix" value="1" step="0.5">
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>2 · The numbers that matter</h2>
+    <div class="results">
+      <div class="stat big">
+        <div class="k">Break-even ROAS — an ad below this loses money</div>
+        <div class="v" id="beRoas">—</div>
+        <div class="note" id="beNote"></div>
+      </div>
+      <div class="stat">
+        <div class="k">Profit per order (before ads)</div>
+        <div class="v" id="contrib">—</div>
+        <div class="note">AOV − COGS − shipping − returns − fees</div>
+      </div>
+      <div class="stat">
+        <div class="k">Contribution margin</div>
+        <div class="v" id="marginPct">—</div>
+        <div class="note" id="marginNote">Target: 60%+ landed margin before scaling</div>
+      </div>
+      <div class="stat">
+        <div class="k">Target ROAS to actually grow</div>
+        <div class="v" id="targetRoas">—</div>
+        <div class="note">Break-even × 1.5 — room for profit, not just survival</div>
+      </div>
+      <div class="stat">
+        <div class="k">Max cost per acquisition (CPA)</div>
+        <div class="v" id="maxCpa">—</div>
+        <div class="note">Spend more than this to win one order and you lose money</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>3 · Check a real ad</h2>
+    <div class="grid">
+      <div class="field">
+        <label>ROAS the platform reports<span class="hint">e.g. Meta says "4.0" — is that actually profit?</span></label>
+        <input type="number" id="platRoas" value="4" step="0.1">
+      </div>
+      <div class="field">
+        <label>Ad spend on this ad $<span class="hint">Total spent on the creative being judged.</span></label>
+        <input type="number" id="adSpend" value="200" step="10">
+      </div>
+    </div>
+    <div class="results" style="margin-top:14px">
+      <div class="stat">
+        <div class="k">True profit / loss from this ad</div>
+        <div class="v" id="adProfit">—</div>
+        <div class="verdict" id="adVerdict"></div>
+      </div>
+      <div class="stat">
+        <div class="k">Margin kept per ad dollar</div>
+        <div class="v" id="perDollar">—</div>
+        <div class="note">Profit generated for every $1 of ad spend</div>
+      </div>
+    </div>
+    <p class="explain" id="adExplain"></p>
+  </div>
+
+  <div class="card">
+    <h2>4 · Blended MER — the honest weekly number</h2>
+    <div class="grid">
+      <div class="field">
+        <label>Total store revenue this week $<span class="hint">Everything, all sources — from Shopify, not from Meta.</span></label>
+        <input type="number" id="totRev" value="1500" step="50">
+      </div>
+      <div class="field">
+        <label>Total ad spend this week $<span class="hint">Meta + TikTok + Google combined.</span></label>
+        <input type="number" id="totSpend" value="500" step="10">
+      </div>
+    </div>
+    <div class="results" style="margin-top:14px">
+      <div class="stat">
+        <div class="k">Blended MER</div>
+        <div class="v" id="mer">—</div>
+        <div class="verdict" id="merVerdict"></div>
+      </div>
+      <div class="stat">
+        <div class="k">MER you need to break even</div>
+        <div class="v" id="merNeed">—</div>
+        <div class="note">Same math as break-even ROAS, applied store-wide</div>
+      </div>
+    </div>
+    <p class="explain">Judge the business on <b>MER (total revenue ÷ total ad spend)</b>, weekly — not on what Meta reports about itself. Platforms over-credit themselves; Shopify revenue can't lie.</p>
+  </div>
+
+  <footer>OViT internal tool · break-even ROAS = AOV ÷ profit-per-order-before-ads</footer>
+</div>
+
+<script>
+const $=id=>document.getElementById(id);
+const num=id=>parseFloat($(id).value)||0;
+const money=v=>(v<0?"−$":"$")+Math.abs(v).toFixed(2).replace(/\.00$/,"");
+function calc(){
+  const aov=num("aov"), cogs=num("cogs"), ship=num("ship"),
+        ret=num("ret")/100, feepct=num("feepct")/100, feefix=num("feefix");
+  // Returns cost: refunded revenue + you often eat shipping; simple model = return rate × AOV portion lost
+  const returnCost = ret * aov;
+  const fees = aov*feepct + feefix;
+  const contrib = aov - cogs - ship - returnCost - fees;
+  const marginPct = aov>0 ? contrib/aov*100 : 0;
+  const beRoas = contrib>0 ? aov/contrib : Infinity;
+
+  $("contrib").textContent = money(contrib);
+  $("marginPct").textContent = marginPct.toFixed(0)+"%";
+  $("marginNote").className = "note";
+  $("marginNote").textContent = marginPct>=60 ? "✓ Above the 60% landed-margin bar — safe to scale"
+    : "Below the 60% bar — fix margin before scaling ad spend";
+  if(contrib>0){
+    $("beRoas").textContent = beRoas.toFixed(2)+"×";
+    $("beNote").textContent = "Any ad reporting below "+beRoas.toFixed(2)+"× ROAS is losing money, whatever the platform says.";
+    $("targetRoas").textContent = (beRoas*1.5).toFixed(2)+"×";
+    $("maxCpa").textContent = money(contrib);
+  } else {
+    $("beRoas").textContent = "∞";
+    $("beNote").textContent = "You lose money on every order before ads even start — fix unit economics first.";
+    $("targetRoas").textContent = "—";
+    $("maxCpa").textContent = "$0";
+  }
+
+  // Section 3
+  const platRoas=num("platRoas"), adSpend=num("adSpend");
+  const adRevenue = platRoas*adSpend;
+  const orders = aov>0 ? adRevenue/aov : 0;
+  const adProfit = orders*contrib - adSpend;
+  $("adProfit").textContent = money(adProfit);
+  const v=$("adVerdict");
+  if(adSpend>0){
+    if(adProfit>0){v.textContent="✓ Profitable";v.className="verdict good";}
+    else{v.textContent="✗ Losing money despite "+platRoas.toFixed(1)+"× reported ROAS";v.className="verdict bad";}
+  } else {v.textContent="";}
+  $("perDollar").textContent = adSpend>0 ? money(adProfit/adSpend) : "—";
+  $("adExplain").innerHTML = contrib>0
+    ? "A reported <b>"+platRoas.toFixed(1)+"×</b> ROAS on <b>"+money(adSpend)+"</b> spend = "+money(adRevenue)+" revenue ≈ "+orders.toFixed(1)+" orders × "+money(contrib)+" profit each = <b>"+money(orders*contrib)+"</b> gross profit, minus the "+money(adSpend)+" spent = <b>"+money(adProfit)+"</b>. That's why a \"4× ROAS\" can still lose money when margins are thin."
+    : "";
+
+  // Section 4
+  const totRev=num("totRev"), totSpend=num("totSpend");
+  const mer = totSpend>0 ? totRev/totSpend : 0;
+  $("mer").textContent = totSpend>0 ? mer.toFixed(2)+"×" : "—";
+  $("merNeed").textContent = contrib>0 ? beRoas.toFixed(2)+"×" : "—";
+  const mv=$("merVerdict");
+  if(totSpend>0 && contrib>0){
+    if(mer>=beRoas){mv.textContent="✓ Above break-even";mv.className="verdict good";}
+    else{mv.textContent="✗ Below break-even ("+beRoas.toFixed(2)+"× needed)";mv.className="verdict bad";}
+  } else {mv.textContent="";}
+}
+document.querySelectorAll("input").forEach(i=>i.addEventListener("input",calc));
+calc();
+</script>
+</body>
+</html>
